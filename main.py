@@ -10,7 +10,7 @@ def main():
     
     if token and gateway_id:
         # Start the heartbeat mechanism
-        start_heartbeat(gateway_id, tenant, token)
+        # start_heartbeat(gateway_id, tenant, token)
         
         # Start listening to SSE events
         listen_to_sse(tenant, gateway_id, token)
