@@ -23,120 +23,92 @@ def run_powershell_script(server_ip, username, password, powershell_script):
         print(f"Connection error: {str(e)}")
         return None
 
+import json
+from datetime import datetime
+
 def get_wsus_detailed_info(server_ip, username, password):
-    """Get comprehensive WSUS information including detailed update information"""
+    """Get comprehensive WSUS information organized by computers"""
     powershell_script = """
     [reflection.assembly]::LoadWithPartialName("Microsoft.UpdateServices.Administration") | Out-Null
-    $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost", $false, 8530)
-    
-    # Function to extract KB numbers from title
-    function Get-KBNumber {
-        param([string]$title)
-        if ($title -match "KB\d+") {
-            return $matches[0]
-        }
-        return "N/A"
+$wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost", $false, 8530)
+
+# Function to extract KB numbers
+function Get-KBNumber {
+    param([string]$title)
+    $kbMatch = $title | Select-String -Pattern "KB(\d+)" -AllMatches
+    if ($kbMatch) {
+        return $kbMatch.Matches.Value
     }
-    
-    # Get all computers
-    $computers = $wsus.GetComputerTargets() | ForEach-Object {
-        $computer = $_
-        
-        # Get needed updates for this computer
-        $neededUpdates = $computer.GetUpdateInstallationInfoPerUpdate() | 
-            Where-Object { $_.UpdateInstallationState -eq 'NotInstalled' } |
+    return $null
+}
+
+# Build the result organized by computers
+$computersData = @{}
+$computerGroups = $wsus.GetComputerTargetGroups()
+
+foreach ($group in $computerGroups) {
+    $groupComputers = $group.GetComputerTargets()
+    foreach ($computer in $groupComputers) {
+        if (-not $computersData.ContainsKey($computer.Id)) {
+            $computersData[$computer.Id] = [PSCustomObject]@{
+                ComputerName = $computer.FullDomainName
+                IPAddress = $computer.IPAddress
+                LastStatusReport = $computer.LastReportedStatusTime
+                LastSyncTime = $computer.LastSyncTime
+                OSDescription = $computer.OSDescription
+                Groups = @()
+                Updates = @()
+            }
+        }
+        # Add group name to the computer's group list
+        $computersData[$computer.Id].Groups += $group.Name
+
+        # Get applicable updates for the computer
+        $applicableUpdates = $computer.GetUpdateInstallationInfoPerUpdate() |
+            Where-Object { $_.UpdateInstallationState -ne 'NotApplicable' } |
             ForEach-Object {
                 $update = $wsus.GetUpdate($_.UpdateId)
-                [PSCustomObject]@{
-                    KB = (Get-KBNumber $update.Title)
-                    Title = $update.Title
-                    Description = $update.Description
-                    Classification = $update.UpdateClassificationTitle
-                    ReleaseDate = $update.CreationDate
-                    Severity = $update.MsrcSeverity
-                    RebootRequired = $update.RequiresReboot
+                $kbNumber = Get-KBNumber -title $update.Title
+                if ($kbNumber) {
+                    [PSCustomObject]@{
+                        KB = $kbNumber
+                        Title = $update.Title
+                        Description = $update.Description
+                        Classification = $update.UpdateClassificationTitle
+                        ReleaseDate = $update.CreationDate
+                        Severity = $update.MsrcSeverity
+                        State = $_.UpdateInstallationState
+                        RebootRequired = $update.RequiresReboot
+                        InstallationDate = if ($_.UpdateInstallationState -eq 'Installed') { $_.InstallationDate } else { $null }
+                    }
                 }
-            }
-        
-        # Get installed updates for this computer
-        $installedUpdates = $computer.GetUpdateInstallationInfoPerUpdate() | 
-            Where-Object { $_.UpdateInstallationState -eq 'Installed' } |
-            ForEach-Object {
-                $update = $wsus.GetUpdate($_.UpdateId)
-                [PSCustomObject]@{
-                    KB = (Get-KBNumber $update.Title)
-                    Title = $update.Title
-                    Classification = $update.UpdateClassificationTitle
-                    InstallationDate = $_.InstallationDate
-                    Severity = $update.MsrcSeverity
-                }
-            }
-        
-        [PSCustomObject]@{
-            ComputerName = $computer.FullDomainName
-            IPAddress = $computer.IPAddress
-            LastStatusReport = $computer.LastReportedStatusTime
-            LastSyncTime = $computer.LastSyncTime
-            OSDescription = $computer.OSDescription
-            NeededCount = $computer.GetUpdateInstallationSummary().NotInstalledCount
-            InstalledCount = $computer.GetUpdateInstallationSummary().InstalledCount
-            FailedCount = $computer.GetUpdateInstallationSummary().FailedCount
-            NeededUpdates = @($neededUpdates)
-            InstalledUpdates = @($installedUpdates)
-        }
+            } | Where-Object { $_ -ne $null }
+
+        # Add updates to the computer's update list
+        $computersData[$computer.Id].Updates += $applicableUpdates
     }
-    
-    # Combine all information
-    $result = [PSCustomObject]@{
-        Computers = $computers
-        LastReportTime = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
-    }
-    
-    ConvertTo-Json -InputObject $result -Depth 10 -Compress
+}
+
+# Combine all information
+$result = @{
+    Computers = $computersData.Values
+    LastReportTime = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+}
+
+ConvertTo-Json -InputObject $result -Depth 15 -Compress
+
     """
-    
+
     # Run the script and parse the results
     output = run_powershell_script(server_ip, username, password, powershell_script)
+    
     if output:
         try:
             wsus_data = json.loads(output)
             
-            # Print summary
-            print("\n=== WSUS Server Detailed Report ===")
-            print(f"Report Time: {wsus_data['LastReportTime']}")
-            print(f"\nComputers Found: {len(wsus_data['Computers'])}")
-            
-            # Print detailed computer information
-            for computer in wsus_data['Computers']:
-                print(f"\n{'='*50}")
-                print(f"Computer: {computer['ComputerName']}")
-                print(f"OS: {computer['OSDescription']}")
-                print(f"IP Address: {computer['IPAddress']}")
-                print(f"Updates Needed: {computer['NeededCount']}")
-                print(f"Updates Installed: {computer['InstalledCount']}")
-                print(f"Failed Updates: {computer['FailedCount']}")
-                print(f"Last Sync: {computer['LastSyncTime']}")
-                
-                if computer['NeededUpdates']:
-                    print("\nNeeded Updates:")
-                    for update in computer['NeededUpdates']:
-                        print(f"\n- KB: {update['KB']}")
-                        print(f"  Title: {update['Title']}")
-                        print(f"  Classification: {update['Classification']}")
-                        print(f"  Severity: {update['Severity']}")
-                        print(f"  Reboot Required: {update['RebootRequired']}")
-                
-                if computer['InstalledUpdates']:
-                    print("\nRecently Installed Updates:")
-                    for update in computer['InstalledUpdates'][-5:]:  # Show last 5 installed updates
-                        print(f"\n- KB: {update['KB']}")
-                        print(f"  Title: {update['Title']}")
-                        print(f"  Classification: {update['Classification']}")
-                        print(f"  Installation Date: {update['InstallationDate']}")
-            
-            # Save the data to a file
+            # Save the report to a file
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"wsus_detailed_report_{timestamp}.json"
+            filename = f"wsus_detailed_report.json"
             with open(filename, 'w') as f:
                 json.dump(wsus_data, f, indent=2)
             print(f"\nDetailed report saved to {filename}")

@@ -1,33 +1,50 @@
-#!/usr/bin/env python
+import os
+from kafka import KafkaProducer
+import json
+import logging
 
-from random import choice
-from confluent_kafka import Producer
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Configuration settings
-config = {
-    'bootstrap.servers': 'localhost:9092',
-    'acks': 'all'
-}
+# Kafka configuration
+# Use environment variable or default to docker network
+KAFKA_BROKER_URL = os.getenv('KAFKA_BROKER_URL', 'localhost:9092')
+TOPIC_NAME = 'petronas'
 
-# Create Producer instance
-producer = Producer(config)
+def create_kafka_producer():
+    try:
+        producer = KafkaProducer(
+            bootstrap_servers=KAFKA_BROKER_URL,
+            value_serializer=lambda v: json.dumps(v).encode('utf-8')
+        )
+        return producer
+    except Exception as e:
+        logger.error(f"Error creating Kafka producer: {e}")
+        return None
 
-# Topic
-topic = "quickstart"
-
-# Callback function for delivery
-def delivery_callback(err, msg):
-    if err:
-        print('ERROR: Message failed delivery: {}'.format(err))
-    else:
-        # print("Produced event to topic {topic}".format(
-        #     topic=msg.topic()))
-        pass
-
-# Function to produce an event
 def produce_event(data):
-    producer.produce(topic, data, callback=delivery_callback)
-    producer.poll(0)
-    producer.flush()
+    producer = create_kafka_producer()
+    if not producer:
+        logger.error("Failed to create producer")
+        return
 
-
+    try:
+        # Ensure data is in the correct format
+        message = {
+            "data": data
+        }
+        # Send message
+        future = producer.send(TOPIC_NAME, message)
+        
+        # Block until a single message is sent (optional)
+        record_metadata = future.get(timeout=10)
+        
+        logger.info(f"Message sent to topic '{record_metadata.topic}' "
+                    f"Partition: {record_metadata.partition} "
+                    f"Offset: {record_metadata.offset}")
+    except Exception as e:
+        logger.error(f"Error sending message: {e}")
+    finally:
+        # Always close the producer
+        producer.close()

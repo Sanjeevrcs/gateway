@@ -19,15 +19,18 @@ def validate_sse_data(event_data):
     Returns:
         bool: True if data is valid, False otherwise.
     """
+    print("Validating data:", event_data)
     # Check if event_data is already a dictionary
     if isinstance(event_data, str):
         try:
             # Parse the event data from JSON if it's in string format
             data = json.loads(event_data)
+            print("Parsed data:", data)
         except json.JSONDecodeError:
             print("Validation Error: Invalid JSON format received.")
             return False, None
     elif isinstance(event_data, dict):
+        print("Parsed data:", event_data)
         data = event_data
     else:
         print("Validation Error: Unsupported data format.")
@@ -58,7 +61,9 @@ def listen_to_sse(tenant, gateway_id, token):
         try:
             for event in event_source:
                 # Validate the event data format
+            
                 valid, event_data = validate_sse_data(event.data)
+                print("Valid:", valid)
                 if valid:
                     print("Validated data:", event_data)
                     
