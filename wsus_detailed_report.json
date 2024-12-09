@@ -1,5 +1,5 @@
 {
-  "LastReportTime": "2024-11-27 09:57:49",
+  "LastReportTime": "2024-11-28 05:04:20",
   "Computers": [
     {
       "ComputerName": "windows10.smarteis-9856.com",
@@ -13,13 +13,13 @@
         "IsIPv6Teredo": false,
         "IsIPv4MappedToIPv6": false
       },
-      "LastStatusReport": "/Date(1732670829207)/",
-      "LastSyncTime": "/Date(1732670345850)/",
+      "LastStatusReport": "/Date(1732755545943)/",
+      "LastSyncTime": "/Date(1732755062070)/",
       "OSDescription": "Windows 10 Pro",
       "Groups": [
         "All Computers",
         "WSUS-Business-Users"
-      ],
+      ],0
       "Updates": [
         {
           "KB": "KB5031539",
@@ -255,8 +255,8 @@
         "IsIPv6Teredo": false,
         "IsIPv4MappedToIPv6": false
       },
-      "LastStatusReport": "/Date(1732655070413)/",
-      "LastSyncTime": "/Date(1732654584317)/",
+      "LastStatusReport": "/Date(1732753976267)/",
+      "LastSyncTime": "/Date(1732753494083)/",
       "OSDescription": "Windows Server 2019 Datacenter",
       "Groups": [
         "All Computers",
