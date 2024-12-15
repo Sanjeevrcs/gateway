@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path = [p for p in sys.path if p != os.path.abspath('kafka')]
 from kafka import KafkaProducer
 import json
 import logging

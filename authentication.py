@@ -1,7 +1,7 @@
 # authentication.py
 
 import requests
-from config import AUTH_URL_TEMPLATE
+from config import AUTH_URL_TEMPLATE, PROTOCOL, ATTACKBOX_SERVER_DOMAIN
 
 def authenticate(tenant):
     """Prompt for username and password, and send authentication request."""
@@ -11,7 +11,8 @@ def authenticate(tenant):
     username = 'g1'
     password = 'g1'
 
-    auth_url = AUTH_URL_TEMPLATE.format(tenant=tenant)
+    auth_url = AUTH_URL_TEMPLATE.format(tenant=tenant, domain=ATTACKBOX_SERVER_DOMAIN, protocol=PROTOCOL)
+    
     print("Authenticating...", auth_url)
     
     payload = {

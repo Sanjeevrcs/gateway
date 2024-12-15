@@ -3,20 +3,20 @@
 import time
 import requests
 import threading
-from config import HEARTBEAT_URL_TEMPLATE
+from config import HEARTBEAT_URL_TEMPLATE, ATTACKBOX_SERVER_DOMAIN, PROTOCOL
 
 def send_heartbeat(gateway_id, tenant, token):
     """Send heartbeat data to the backend at regular intervals."""
     headers = {
         'Authorization': f'Bearer {token}'
     }
-    heartbeat_url = HEARTBEAT_URL_TEMPLATE.format(tenant=tenant, gateway_id=gateway_id)
+    heartbeat_url = HEARTBEAT_URL_TEMPLATE.format(tenant=tenant, gateway_id=gateway_id, protocol=PROTOCOL, domain=ATTACKBOX_SERVER_DOMAIN)
     
     while True:
         try:
             payload = {
                 'gateway_id': gateway_id,
-                'status': 'alive',  # or dynamic status
+                'status': 'alive',
                 'timestamp': time.time()
             }
             response = requests.post(heartbeat_url, data=payload, headers=headers)

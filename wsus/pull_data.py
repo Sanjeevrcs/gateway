@@ -1,33 +1,20 @@
-import winrm
+from datetime import datetime
 import json
 from datetime import datetime
-
-def run_powershell_script(server_ip, username, password, powershell_script):
-    """Execute PowerShell script on remote WSUS server"""
-    try:
-        session = winrm.Session(
-            f'http://{server_ip}:5985/wsman',
-            auth=(username, password),
-            transport="ntlm",
-        )
-        
-        result = session.run_ps(powershell_script)
-        
-        if result.status_code != 0:
-            print(f"Error executing script: {result.std_err.decode()}")
-            return None
-        
-        return result.std_out.decode()
-    
-    except Exception as e:
-        print(f"Connection error: {str(e)}")
-        return None
-
 import json
+import os
+import sys
+from typing import List, Optional, Dict, Any
 from datetime import datetime
+from .utils import get_update_state_description, int_to_ip_address, parse_wsus_date
+from .winrm_connector import run_powershell_script
+from producer import produce_event
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 def get_wsus_detailed_info(server_ip, username, password):
-    """Get comprehensive WSUS information organized by computers"""
+    """Get comprehensive WSUS information including detailed update information"""
     powershell_script = """
     [reflection.assembly]::LoadWithPartialName("Microsoft.UpdateServices.Administration") | Out-Null
     $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost", $false, 8530)
@@ -97,34 +84,79 @@ def get_wsus_detailed_info(server_ip, username, password):
 
     ConvertTo-Json -InputObject $result -Depth 15 -Compress
 
-        """
-
+    """
+    
     # Run the script and parse the results
     output = run_powershell_script(server_ip, username, password, powershell_script)
-    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    result = None
     if output:
         try:
-            wsus_data = json.loads(output)
-            
-            # Save the report to a file
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"wsus_detailed_report.json"
-            with open(filename, 'w') as f:
-                json.dump(wsus_data, f, indent=2)
-            print(f"\nDetailed report saved to {filename}")
-            
-            return wsus_data
+            wsus_data = json.loads(output)            
+            # Save the data to a file
+            print(f"\nWSUS data retrieved successfully at {timestamp}")
+            result = wsus_data
         
         except json.JSONDecodeError as e:
             print(f"Error parsing WSUS data: {str(e)}")
-            return None
+            result = str(e)
     
+    filename = f"./dump/wsus_detailed_report_{timestamp}.json"
+    with open(filename, 'w') as f:
+        json.dump(result, f, indent=2)
+    print(f"\nDetailed report saved to {filename}")
     return None
 
-# Server details
-server_ip = "20.184.39.130"
-username = "server2019user"
-password = "SQT28102024##"
 
-# Run the report
-wsus_info = get_wsus_detailed_info(server_ip, username, password)
+
+def pull_data(data):
+    # Run the report
+    ip_address = data['ip_address']
+    hostname = data['hostname']
+    password = data['password']
+    wsus_info = get_wsus_detailed_info(ip_address, hostname, password)
+
+    # Produce the event
+    if wsus_info:
+        for computer in wsus_info['Computers']:
+
+            formatted_ip_address = int_to_ip_address(computer['IPAddress'])
+            # Prepare the data for this computer
+            last_status_report = parse_wsus_date(computer['LastStatusReport'])
+            last_sync_time = parse_wsus_date(computer['LastSyncTime'])
+
+            computer_data = {
+                "computer_name": computer['ComputerName'],
+                "ip_address": formatted_ip_address,
+                "last_status_report": last_status_report,
+                "last_sync_time": last_sync_time,
+                "os_description": computer['OSDescription'],
+                "groups": computer['Groups'],
+                "updates": [
+                    {
+                        "kb": update['KB'],
+                        "title": update['Title'],
+                        "description": update['Description'],
+                        "severity": update['Severity'],
+                        "state": get_update_state_description(update['State']),
+                        "reboot_required": update['RebootRequired'],
+                        "installation_date": update.get('InstallationDate'),
+                    }
+                    for update in computer['Updates']
+                ],
+            }
+
+            # Produce the event for this computer
+            print(f"Producing event for computer: {computer['ComputerName']}")
+            produce_event(json.dumps({
+                "task": "pull_data",
+                "data": computer_data,
+            }))
+
+
+# data = {
+#     "ip_address": "20.184.39.130",
+#     "hostname": "server2019user",
+#     "password": "WindowsUser2019",
+# }
+# pull_data(data)

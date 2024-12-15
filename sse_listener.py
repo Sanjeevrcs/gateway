@@ -1,10 +1,11 @@
 # sse_listener.py
 from requests_sse import EventSource, InvalidStatusCodeError, InvalidContentTypeError
 import requests
-from config import SSE_URL_TEMPLATE
+from config import SSE_URL_TEMPLATE, ATTACKBOX_SERVER_DOMAIN, PROTOCOL
 import json
+from wsus.pull_data import pull_data
+from wsus.patch_approval import patch_approval
 
-from wsus_connector import pull_data
 
 def validate_sse_data(event_data):
     """
@@ -25,7 +26,6 @@ def validate_sse_data(event_data):
         try:
             # Parse the event data from JSON if it's in string format
             data = json.loads(event_data)
-            print("Parsed data:", data)
         except json.JSONDecodeError:
             print("Validation Error: Invalid JSON format received.")
             return False, None
@@ -50,7 +50,7 @@ def validate_sse_data(event_data):
 
 
 def listen_to_sse(tenant, gateway_id, token):
-    sse_url = SSE_URL_TEMPLATE.format(tenant=tenant, gateway_id=gateway_id)
+    sse_url = SSE_URL_TEMPLATE.format(tenant=tenant, gateway_id=gateway_id, protocol=PROTOCOL, domain=ATTACKBOX_SERVER_DOMAIN)
     headers = {
         'Accept': 'text/event-stream', 
         'Authorization': f'Bearer {token}',
@@ -60,15 +60,14 @@ def listen_to_sse(tenant, gateway_id, token):
     with EventSource(sse_url, timeout=30, headers=headers) as event_source:
         try:
             for event in event_source:
-                # Validate the event data format
-            
+                if event.data == "keep-alive":
+                    continue
                 valid, event_data = validate_sse_data(event.data)
-                print("Valid:", valid)
                 if valid:
                     print("Validated data:", event_data)
-                    
                     switcher = {
                         "pull_data": pull_data,
+                        "patch_approval": patch_approval,
                     }
                     function = switcher.get(event_data["task"], lambda x: print("Invalid task"))
 
