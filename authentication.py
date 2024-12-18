@@ -3,6 +3,8 @@
 import requests
 from config import AUTH_URL_TEMPLATE, PROTOCOL, ATTACKBOX_SERVER_DOMAIN
 
+tenant_id = ""
+
 def authenticate(tenant):
     """Prompt for username and password, and send authentication request."""
     # username = input("Enter username: ")
@@ -25,8 +27,9 @@ def authenticate(tenant):
         if response.status_code == 200:
             token = response.json().get('token')
             gateway_id = response.json().get('id')
+            tenant_id = response.json().get('tenant_id')
             print("Authenticated successfully!")
-            print(f"Token: {token}", f"Gateway ID: {gateway_id}")
+            print(f"Token: {token}", f"Gateway ID: {gateway_id}", f"Tenant ID: {tenant_id}")
             return token, gateway_id
         else:
             print(f"Failed to authenticate: {response.status_code}")

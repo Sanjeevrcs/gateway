@@ -4,6 +4,7 @@ sys.path = [p for p in sys.path if p != os.path.abspath('kafka')]
 from kafka import KafkaProducer
 import json
 import logging
+from authentication import tenant_id
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Kafka configuration
 # Use environment variable or default to docker network
 KAFKA_BROKER_URL = os.getenv('KAFKA_BROKER_URL', 'localhost:9092')
-TOPIC_NAME = 'petronas'
+TOPIC_NAME = tenant_id
 
 def create_kafka_producer():
     try:
