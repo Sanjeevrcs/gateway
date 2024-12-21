@@ -3,10 +3,10 @@ from heartbeat import start_heartbeat
 from sse_listener import listen_to_sse
 
 def main():
-    # tenant = input("Enter tenant ID: ")  # Prompt for tenant ID
-    tenant = 'petronas'
+    tenant = input("Enter tenant ID: ")  # Prompt for tenant ID
+    # tenant = 'petronas'
     # Authenticate the gateway if not authenticated yet
-    token, gateway_id = authenticate(tenant)
+    token, gateway_id, tenant_id = authenticate(tenant)
     
     if token and gateway_id:
         # Start the heartbeat mechanism
@@ -14,7 +14,7 @@ def main():
         
         # Start listening to SSE events
         print("Listening to SSE events...", tenant, gateway_id, token)
-        listen_to_sse(tenant, gateway_id, token)
+        listen_to_sse(tenant, gateway_id, token, tenant_id)
     else:
         print("Authentication failed. Exiting...")
 

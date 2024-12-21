@@ -49,7 +49,7 @@ def validate_sse_data(event_data):
 
 
 
-def listen_to_sse(tenant, gateway_id, token):
+def listen_to_sse(tenant, gateway_id, token, tenant_id):
     sse_url = SSE_URL_TEMPLATE.format(tenant=tenant, gateway_id=gateway_id, protocol=PROTOCOL, domain=ATTACKBOX_SERVER_DOMAIN)
     headers = {
         'Accept': 'text/event-stream', 
@@ -75,7 +75,9 @@ def listen_to_sse(tenant, gateway_id, token):
                     if function:
                         print("Calling function...", event_data["data"])
                         for data in event_data['data']:
-                            function(data)
+                            function(data, tenant_id)
+                    else:
+                        print("Invalid task:", event_data["task"])
                     # Process the event here if data is valid
                 else:
                     print("Invalid data format received.")

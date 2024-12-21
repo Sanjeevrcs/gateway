@@ -4,7 +4,7 @@ sys.path = [p for p in sys.path if p != os.path.abspath('kafka')]
 from kafka import KafkaProducer
 import json
 import logging
-from authentication import tenant_id
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Kafka configuration
 # Use environment variable or default to docker network
 KAFKA_BROKER_URL = os.getenv('KAFKA_BROKER_URL', 'localhost:9092')
-TOPIC_NAME = tenant_id
+
 
 def create_kafka_producer():
     try:
@@ -27,12 +27,18 @@ def create_kafka_producer():
         return None
 
 def produce_event(data):
+    
+    json_data = json.loads(data)
+    tenant_id = json_data['tenant_id']
+    TOPIC_NAME = f"tenant_{tenant_id}"
+    print(f"Producing event to topic: {TOPIC_NAME}")
     producer = create_kafka_producer()
     if not producer:
         logger.error("Failed to create producer")
         return
 
     try:
+
         # Ensure data is in the correct format
         message = {
             "data": data

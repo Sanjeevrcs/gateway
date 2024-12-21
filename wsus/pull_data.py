@@ -4,7 +4,6 @@ from datetime import datetime
 import json
 import os
 import sys
-from typing import List, Optional, Dict, Any
 from datetime import datetime
 from .utils import get_update_state_description, int_to_ip_address, parse_wsus_date
 from .winrm_connector import run_powershell_script
@@ -105,11 +104,11 @@ def get_wsus_detailed_info(server_ip, username, password):
     with open(filename, 'w') as f:
         json.dump(result, f, indent=2)
     print(f"\nDetailed report saved to {filename}")
-    return None
+    return result
 
 
 
-def pull_data(data):
+def pull_data(data, tenant_id):
     # Run the report
     ip_address = data['ip_address']
     hostname = data['hostname']
@@ -151,6 +150,7 @@ def pull_data(data):
             produce_event(json.dumps({
                 "task": "pull_data",
                 "data": computer_data,
+                "tenant_id": tenant_id,
             }))
 
 

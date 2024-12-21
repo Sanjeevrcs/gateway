@@ -59,3 +59,6 @@ pylint-error.txt
 
 # Environment variables
 .env
+
+#wsus dump
+dump/
