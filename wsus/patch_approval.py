@@ -241,18 +241,22 @@ def approve_wsus_updates_per_groups(
 
 
 def patch_approval(
-    server_ip: str,
-    username: str,
-    password: str,
-    kb_numbers: List[str],
-    target_groups: Optional[List[str]] = None,
-    target_computers: Optional[List[str]] = None,  # List of computers
-    temporary_group: str = "TempGroup",  # Temporary group for approval
-    approval_action: str = 'Install'
+    data: Dict[str, Any],
+    tenant_id: str
 ) -> Dict[str, Any]:
     """
     Approve WSUS patches based on provided parameters.
     """
+
+    server_ip = data.get('ip_address')
+    username = data.get('hostname')
+    password = data.get('password')
+    kb_numbers = data.get('kbArticle')
+    target_groups = data.get('groups')
+    target_computers = data.get('computers')
+    temporary_group = 'TempGroup'
+    approval_action = 'Install'
+
     # Validate input parameters
     if not kb_numbers:
         result = {
@@ -300,12 +304,7 @@ def patch_approval(
 
     return result
 
+
 # patch_approval(
-#     server_ip="20.184.39.130",
-#     username="server2019user",
-#     password="WindowsUser2019",
-#     kb_numbers=["KB5037036"],
-#     # target_groups=["WSUS-Business-Users"],
-#     target_computers=["windows10.smarteis-9856.com"],
-#     approval_action="Install"
+# {'ip_address': '20.184.39.130', 'hostname': 'server2019user', 'password': 'WindowsUser2019', 'computers': ['windows10.smarteis-9856.com'], 'kbArticle': ['KB5031539']}, '1'
 # )

@@ -62,12 +62,13 @@ def listen_to_sse(tenant, gateway_id, token, tenant_id):
             for event in event_source:
                 if event.data == "keep-alive":
                     continue
+                print("Received event:", event.data)
                 valid, event_data = validate_sse_data(event.data)
                 if valid:
                     print("Validated data:", event_data)
                     switcher = {
                         "pull_data": pull_data,
-                        "patch_approval": patch_approval,
+                        "patch_installation": patch_approval,
                     }
                     function = switcher.get(event_data["task"], lambda x: print("Invalid task"))
 
