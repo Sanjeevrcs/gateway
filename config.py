@@ -1,5 +1,5 @@
 # config.py
-ATTACKBOX_SERVER_DOMAIN = 'backend.attackbox.online'
+ATTACKBOX_SERVER_DOMAIN = 'localhost:8000'
 PROTOCOL = 'http'
 KAFKA_URL = '172.210.111.156:9092'
 

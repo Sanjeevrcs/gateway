@@ -30,6 +30,7 @@ def produce_event(data):
     
     json_data = json.loads(data)
     tenant_id = json_data['tenant_id']
+    gateway_id = json_data['gateway_id']
     TOPIC_NAME = f"tenant_{tenant_id}"
     print(f"Producing event to topic: {TOPIC_NAME}")
     producer = create_kafka_producer()
@@ -41,7 +42,8 @@ def produce_event(data):
 
         # Ensure data is in the correct format
         message = {
-            "data": data
+            "data": data,
+            "gateway_id": gateway_id
         }
         # Send message
         future = producer.send(TOPIC_NAME, message)

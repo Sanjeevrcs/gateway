@@ -76,7 +76,7 @@ def listen_to_sse(tenant, gateway_id, token, tenant_id):
                     if function:
                         print("Calling function...", event_data["data"])
                         for data in event_data['data']:
-                            function(data, tenant_id)
+                            function(data, tenant_id,gateway_id)
                     else:
                         print("Invalid task:", event_data["task"])
                     # Process the event here if data is valid

@@ -108,7 +108,7 @@ def get_wsus_detailed_info(server_ip, username, password):
 
 
 
-def pull_data(data, tenant_id):
+def pull_data(data, tenant_id,gateway_id):
     # Run the report
     ip_address = data['ip_address']
     hostname = data['hostname']
@@ -151,12 +151,13 @@ def pull_data(data, tenant_id):
                 "task": "pull_data",
                 "data": computer_data,
                 "tenant_id": tenant_id,
+                "gateway_id": gateway_id
             }))
 
 
-# data = {
-#     "ip_address": "20.184.39.130",
-#     "hostname": "server2019user",
-#     "password": "WindowsUser2019",
-# }
-# pull_data(data)
+data = {
+    "ip_address": "20.184.39.130",
+    "hostname": "server2019user",
+    "password": "WindowsUser2019",
+}
+pull_data(data, 3, 2)

@@ -33,7 +33,7 @@ def authenticate(tenant):
             return token, gateway_id, tenant_id
         else:
             print(f"Failed to authenticate: {response.status_code}")
-            return None, None
+            return None, None, None
     except Exception as e:
         print(f"Error during authentication: {e}")
-        return None, None
+        return None, None, None

@@ -242,7 +242,8 @@ def approve_wsus_updates_per_groups(
 
 def patch_approval(
     data: Dict[str, Any],
-    tenant_id: str
+    tenant_id: str,
+    gateway_id: str,
 ) -> Dict[str, Any]:
     """
     Approve WSUS patches based on provided parameters.
