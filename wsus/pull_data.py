@@ -4,12 +4,12 @@ from datetime import datetime
 import json
 import os
 import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from datetime import datetime
-from .utils import get_update_state_description, int_to_ip_address, parse_wsus_date
-from .winrm_connector import run_powershell_script
+from utils import get_update_state_description, int_to_ip_address, parse_wsus_date
+from winrm_connector import run_powershell_script
 from producer import produce_event
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
 def get_wsus_detailed_info(server_ip, username, password):
@@ -84,31 +84,34 @@ def get_wsus_detailed_info(server_ip, username, password):
     ConvertTo-Json -InputObject $result -Depth 15 -Compress
 
     """
-    
-    # Run the script and parse the results
-    output = run_powershell_script(server_ip, username, password, powershell_script)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    result = None
-    if output:
-        try:
-            wsus_data = json.loads(output)            
-            # Save the data to a file
-            print(f"\nWSUS data retrieved successfully at {timestamp}")
-            result = wsus_data
-        
-        except json.JSONDecodeError as e:
-            print(f"Error parsing WSUS data: {str(e)}")
-            result = str(e)
-    
-    filename = f"./dump/wsus_detailed_report_{timestamp}.json"
-    with open(filename, 'w') as f:
-        json.dump(result, f, indent=2)
-    print(f"\nDetailed report saved to {filename}")
-    return result
+    try:
+        # Run the script and parse the results
+        output = run_powershell_script(server_ip, username, password, powershell_script)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        result = None
+        if output:
+            try:
+                wsus_data = json.loads(output)
+                # Save the data to a file
+                print(f"\nWSUS data retrieved successfully at {timestamp}")
+                result = wsus_data
+
+            except json.JSONDecodeError as e:
+                result = f"Error occured while parsing returned data from WSUS server: {str(e)}"
+
+        else:
+            result = f"No output from WSUS server. Output: {output}"
+
+        filename = f"./dump/wsus_detailed_report_{timestamp}.json"
+        with open(filename, "w") as f:
+            json.dump(result, f, indent=2)
+        print(f"\nDetailed report saved to {filename}")
+        return result
+    except Exception as e:
+        return f"Error occured while retrieving data from WSUS server: {e}"
 
 
-
-def pull_data(data, tenant_id,gateway_id):
+def pull_data(data, tenant_id, gateway_id):
     # Run the report
     ip_address = data['ip_address']
     hostname = data['hostname']
@@ -116,7 +119,7 @@ def pull_data(data, tenant_id,gateway_id):
     wsus_info = get_wsus_detailed_info(ip_address, hostname, password)
 
     # Produce the event
-    if wsus_info:
+    if wsus_info and isinstance(wsus_info, dict):
         for computer in wsus_info['Computers']:
 
             formatted_ip_address = int_to_ip_address(computer['IPAddress'])
@@ -147,17 +150,31 @@ def pull_data(data, tenant_id,gateway_id):
 
             # Produce the event for this computer
             print(f"Producing event for computer: {computer['ComputerName']}")
-            produce_event(json.dumps({
+            data = json.dumps(
+                {
+                    "task": "pull_data",
+                    "data": computer_data,
+                    "tenant_id": tenant_id,
+                    "gateway_id": gateway_id
+                }
+            )
+            produce_event(data)
+
+    else:
+        print(f"Error occured while retrieving data from WSUS server: {wsus_info}")
+        data = json.dumps(
+            {
                 "task": "pull_data",
-                "data": computer_data,
+                "error": wsus_info,
                 "tenant_id": tenant_id,
                 "gateway_id": gateway_id
-            }))
+            })
+        produce_event(data)
 
 
-data = {
-    "ip_address": "20.184.39.130",
-    "hostname": "server2019user",
-    "password": "WindowsUser2019",
-}
-pull_data(data, 3, 2)
+# data = {
+#     "ip_address": "20.184.39.130",
+#     "hostname": "server2019user",
+#     "password": "WindowsUser2019",
+# }
+# pull_data(data, 3, 1)
