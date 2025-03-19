@@ -6,8 +6,8 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from datetime import datetime
-from utils import get_update_state_description, int_to_ip_address, parse_wsus_date
-from winrm_connector import run_powershell_script
+from .utils import get_update_state_description, int_to_ip_address, parse_wsus_date
+from .winrm_connector import run_powershell_script
 from producer import produce_event
 
 
